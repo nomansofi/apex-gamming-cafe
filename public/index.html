@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apex Gaming Cafe — Admin Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            cafe: { bg: '#000000', card: '#0a0a0a' },
+            apex: { green: '#22c55e', neon: '#39ff14' },
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      background: #000000;
+      position: relative;
+      min-height: 100vh;
+    }
+    #apex-watermark {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: url('/logo.png') center 42% / min(70vw, 560px) no-repeat;
+      opacity: 0.22;
+      filter: brightness(1.15) contrast(1.05);
+    }
+    #apex-watermark::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 25%, rgba(0,0,0,0.55) 85%);
+    }
+    .page-content { position: relative; z-index: 1; }
+    header { position: relative; z-index: 40; background: rgba(10, 10, 10, 0.82) !important; backdrop-filter: blur(10px); }
+    main { position: relative; z-index: 1; }
+    .bg-cafe-card { background: rgba(10, 10, 10, 0.88) !important; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .tab-btn.active { border-bottom: 2px solid #22c55e; color: #4ade80; }
+    .tab-btn { border-bottom: 2px solid transparent; color: #6b7280; }
+    .tab-btn:hover { color: #86efac; }
+    .card-enter { animation: cardEnter 0.35s ease-out forwards; }
+    @keyframes cardEnter {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px #22c55e; }
+      50% { opacity: 0.6; transform: scale(0.85); box-shadow: 0 0 4px #22c55e; }
+    }
+    .live-dot { animation: pulse-dot 2s ease-in-out infinite; background: #22c55e; }
+    @keyframes flash-red {
+      0%, 100% { background-color: #0a0a0a; }
+      50% { background-color: #14532d; }
+    }
+    .flash-expired { animation: flash-red 0.6s ease-in-out infinite; }
+    .progress-bar { transition: width 1s linear; background: linear-gradient(90deg, #16a34a, #39ff14); }
+    .toast-enter { animation: toastIn 0.3s ease-out forwards; }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(100%); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .modal-backdrop { backdrop-filter: blur(8px); }
+    input, select { background: #000000; }
+    .apex-card { box-shadow: 0 0 24px rgba(34, 197, 94, 0.06); }
+    .logo-glow { box-shadow: 0 0 20px rgba(57, 255, 20, 0.35); }
+  </style>
+</head>
+<body class="font-sans text-zinc-300 min-h-screen page-content">
+
+  <div id="apex-watermark" aria-hidden="true"></div>
+
+  <!-- Header -->
+  <header class="border-b border-green-900/40 bg-cafe-card sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <img src="/logo.png" alt="Apex Gaming Cafe" class="h-14 w-14 rounded-full object-cover ring-2 ring-green-500/60 logo-glow" />
+        <div>
+          <h1 class="text-lg font-bold text-green-400 tracking-tight">Apex Gaming Cafe</h1>
+          <p class="text-xs text-green-700">Admin Portal</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/40">
+          <span class="w-2 h-2 rounded-full live-dot"></span>
+          <span class="text-xs font-medium text-green-400">Live</span>
+        </div>
+        <div id="live-clock" class="mono text-sm text-green-300/80 tabular-nums"></div>
+      </div>
+    </div>
+    <!-- Tabs -->
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 flex gap-4 sm:gap-6 overflow-x-auto">
+      <button data-tab="dashboard" class="tab-btn active pb-3 text-sm font-medium whitespace-nowrap transition-colors hover:text-white">Live Dashboard</button>
+      <button data-tab="snacks" class="tab-btn pb-3 text-sm font-medium whitespace-nowrap transition-colors hover:text-white">Snacks & Cafe</button>
+      <button data-tab="cash" class="tab-btn pb-3 text-sm font-medium whitespace-nowrap transition-colors hover:text-white">Cash Register</button>
+      <button data-tab="config" class="tab-btn pb-3 text-sm font-medium whitespace-nowrap transition-colors hover:text-white">Device & Pricing</button>
+      <button data-tab="history" class="tab-btn pb-3 text-sm font-medium whitespace-nowrap transition-colors hover:text-white">Session History</button>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+    <!-- Tab 1: Dashboard -->
+    <section id="tab-dashboard" class="tab-panel">
+      <div id="device-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+      <div id="empty-dashboard" class="hidden text-center py-20 text-slate-500">
+        <p class="text-4xl mb-3">🕹️</p>
+        <p>No devices configured. Add devices in the Device & Pricing tab.</p>
+      </div>
+    </section>
+
+    <!-- Tab: Snacks -->
+    <section id="tab-snacks" class="tab-panel hidden space-y-6">
+      <p class="text-sm text-zinc-500">Add snacks to active gaming sessions from the dashboard. Totals are included at checkout. Bill printing coming soon.</p>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-cafe-card border border-green-900/40 rounded-xl p-6">
+          <h2 class="text-base font-semibold text-white mb-4">🍿 Snacks Menu</h2>
+          <div id="snacks-menu-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-80 overflow-y-auto"></div>
+        </div>
+        <div class="bg-cafe-card border border-green-900/40 rounded-xl p-6">
+          <h2 class="text-base font-semibold text-white mb-4">Add Menu Item</h2>
+          <form id="add-snack-form" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input type="text" id="snack-name" required placeholder="Item name"
+              class="px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:border-green-500" />
+            <input type="number" id="snack-price" required min="0" step="1" placeholder="Price ₹"
+              class="px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:border-green-500" />
+            <select id="snack-category" class="px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:border-green-500">
+              <option>Snacks</option><option>Beverages</option><option>Food</option>
+            </select>
+            <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg">Add Item</button>
+          </form>
+          <div class="mt-6">
+            <h3 class="text-sm font-medium text-green-400 mb-2">Active sessions — add snacks</h3>
+            <div id="active-snack-sessions" class="space-y-3 text-sm text-zinc-500">No active sessions</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab: Cash Register -->
+    <section id="tab-cash" class="tab-panel hidden space-y-6">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-cafe-card border border-green-900/40 rounded-xl p-5">
+          <p class="text-xs text-zinc-500 uppercase mb-1">Today · Offline (Cash)</p>
+          <p id="cash-today-offline" class="mono text-2xl font-semibold text-green-400">—</p>
+        </div>
+        <div class="bg-cafe-card border border-green-900/40 rounded-xl p-5">
+          <p class="text-xs text-zinc-500 uppercase mb-1">Today · Online (UPI/Card)</p>
+          <p id="cash-today-online" class="mono text-2xl font-semibold text-green-400">—</p>
+        </div>
+        <div class="bg-cafe-card border border-green-900/40 rounded-xl p-5">
+          <p class="text-xs text-zinc-500 uppercase mb-1">Today · Total Received</p>
+          <p id="cash-today-total" class="mono text-2xl font-semibold text-white">—</p>
+        </div>
+      </div>
+      <div class="bg-cafe-card border border-green-900/40 rounded-xl p-6">
+        <h2 class="text-base font-semibold text-white mb-4">Record Money Received</h2>
+        <form id="cash-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div>
+            <label class="block text-xs text-zinc-500 mb-1">Offline / Cash (₹)</label>
+            <input type="number" id="cash-offline" min="0" step="1" placeholder="0"
+              class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:border-green-500" />
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-500 mb-1">Online / UPI (₹)</label>
+            <input type="number" id="cash-online" min="0" step="1" placeholder="0"
+              class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:border-green-500" />
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-500 mb-1">Date</label>
+            <input type="date" id="cash-date"
+              class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:border-green-500" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs text-zinc-500 mb-1">Notes (optional)</label>
+            <input type="text" id="cash-notes" placeholder="e.g. Evening shift"
+              class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:border-green-500" />
+          </div>
+          <div class="flex items-end sm:col-span-2 lg:col-span-1">
+            <button type="submit" class="w-full px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg">Save Entry</button>
+          </div>
+        </form>
+      </div>
+      <div class="bg-cafe-card border border-green-900/40 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-green-900/40 flex justify-between items-center">
+          <h2 class="text-base font-semibold text-white">Cash Log</h2>
+          <span id="cash-log-date-label" class="text-xs text-zinc-500"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-zinc-500 uppercase border-b border-green-900/40">
+                <th class="px-6 py-3">Time</th>
+                <th class="px-6 py-3">Offline</th>
+                <th class="px-6 py-3">Online</th>
+                <th class="px-6 py-3">Notes</th>
+                <th class="px-6 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="cash-log-body"></tbody>
+          </table>
+        </div>
+        <div id="empty-cash" class="hidden text-center py-12 text-zinc-500 text-sm">No entries for this date.</div>
+      </div>
+    </section>
+
+    <!-- Tab 2: Config -->
+    <section id="tab-config" class="tab-panel hidden space-y-6">
+      <div class="bg-cafe-card border border-green-900/40 rounded-xl p-6">
+        <h2 class="text-base font-semibold text-white mb-4">Add Device</h2>
+        <form id="add-device-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Name</label>
+            <input type="text" id="new-device-name" required placeholder="Apex PC-2"
+              class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:outline-none focus:border-green-500" />
+          </div>
+          <div id="tv-pricing-fields" class="hidden lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-lg border border-green-900/30 bg-black/40">
+            <div class="col-span-2 sm:col-span-4 text-xs text-green-500 font-medium">📺 TV — 1 Person pricing</div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">30 Min (1P)</label>
+              <input type="number" id="new-tv-rate-30-1p" min="0" step="1" placeholder="150"
+                class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:border-green-500" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">1 Hour (1P)</label>
+              <input type="number" id="new-tv-rate-60-1p" min="0" step="1" placeholder="300"
+                class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:border-green-500" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">30 Min (2P)</label>
+              <input type="number" id="new-tv-rate-30-2p" min="0" step="1" placeholder="120"
+                class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:border-green-500" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">1 Hour (2P)</label>
+              <input type="number" id="new-tv-rate-60-2p" min="0" step="1" placeholder="250"
+                class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:border-green-500" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Type</label>
+            <select id="new-device-type" required
+              class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:outline-none focus:border-green-500">
+              <option value="TV">📺 TV</option>
+              <option value="Console">🎮 Console</option>
+              <option value="Simulator">🏎️ Simulator</option>
+              <option value="PC">🖥️ PC</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">30 Min Rate</label>
+            <input type="number" id="new-device-rate-30" required min="0" step="0.01" placeholder="15.00"
+              class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:outline-none focus:border-green-500" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">1 Hour Rate</label>
+            <input type="number" id="new-device-rate-60" required min="0" step="0.01" placeholder="30.00"
+              class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:outline-none focus:border-green-500" />
+          </div>
+          <div class="flex items-end">
+            <button type="submit"
+              class="w-full px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg transition-colors">
+              Add Device
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="bg-cafe-card border border-green-900/40 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-green-900/40">
+          <h2 class="text-base font-semibold text-white">Device Inventory</h2>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-slate-500 uppercase tracking-wider border-b border-green-900/40">
+                <th class="px-6 py-3">ID</th>
+                <th class="px-6 py-3">Name</th>
+                <th class="px-6 py-3">Type</th>
+                <th class="px-6 py-3">1P · 30m</th>
+                <th class="px-6 py-3">1P · 1hr</th>
+                <th class="px-6 py-3">2P · 30m</th>
+                <th class="px-6 py-3">2P · 1hr</th>
+                <th class="px-6 py-3">Status</th>
+                <th class="px-6 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-cafe-card border border-green-900/40 rounded-xl p-6">
+        <h2 class="text-base font-semibold text-white mb-4">Global Settings</h2>
+        <form id="settings-form" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Minimum Charge</label>
+            <input type="number" id="setting-min-charge" min="0" step="0.01"
+              class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:outline-none focus:border-green-500" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Currency Symbol</label>
+            <input type="text" id="setting-currency" maxlength="3" value="₹"
+              class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:outline-none focus:border-green-500" />
+          </div>
+          <div class="flex items-end">
+            <button type="submit"
+              class="w-full px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg transition-colors">
+              Save Settings
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Tab 3: History -->
+    <section id="tab-history" class="tab-panel hidden space-y-6">
+      <div id="stats-ribbon" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="bg-cafe-card border border-green-900/40 rounded-xl p-5">
+          <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Total Revenue</p>
+          <p id="stat-revenue" class="mono text-xl font-semibold text-green-400">—</p>
+        </div>
+        <div class="bg-cafe-card border border-green-900/40 rounded-xl p-5">
+          <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Gaming</p>
+          <p id="stat-gaming" class="mono text-xl font-semibold text-green-400">—</p>
+        </div>
+        <div class="bg-cafe-card border border-green-900/40 rounded-xl p-5">
+          <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Snacks</p>
+          <p id="stat-snacks" class="mono text-xl font-semibold text-green-400">—</p>
+        </div>
+        <div class="bg-cafe-card border border-green-900/40 rounded-xl p-5">
+          <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Hours</p>
+          <p id="stat-hours" class="mono text-xl font-semibold text-green-400">—</p>
+        </div>
+        <div class="bg-cafe-card border border-green-900/40 rounded-xl p-5">
+          <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Popular</p>
+          <p id="stat-popular" class="text-lg font-semibold text-white">—</p>
+        </div>
+      </div>
+
+      <div class="bg-cafe-card border border-green-900/40 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-green-900/40 flex flex-wrap items-center justify-between gap-4">
+          <h2 class="text-base font-semibold text-white">Session History</h2>
+          <div class="flex flex-wrap items-center gap-2">
+            <input type="date" id="history-filter-date"
+              class="px-3 py-1.5 rounded-lg border border-slate-700 text-sm text-white focus:border-green-500" />
+            <button onclick="loadHistory()" class="px-3 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-green-300 rounded-lg border border-green-900/40">Filter</button>
+            <button onclick="clearHistoryByDate()" class="px-3 py-1.5 text-xs bg-red-900/30 hover:bg-red-900/50 text-red-300 rounded-lg border border-red-800/40">Clear Date</button>
+            <button onclick="clearAllHistory()" class="px-3 py-1.5 text-xs bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg border border-red-600/40">Clear All</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-slate-500 uppercase tracking-wider border-b border-green-900/40">
+                <th class="px-6 py-3">Date/Time</th>
+                <th class="px-6 py-3">Device</th>
+                <th class="px-6 py-3">Duration</th>
+                <th class="px-6 py-3">Minutes</th>
+                <th class="px-6 py-3">Snacks</th>
+                <th class="px-6 py-3">Total</th>
+                <th class="px-6 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+          </table>
+        </div>
+        <div id="empty-history" class="hidden text-center py-12 text-slate-500 text-sm">No sessions for this date.</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Checkout Modal -->
+  <div id="checkout-modal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black/60 modal-backdrop" onclick="closeCheckoutModal()"></div>
+    <div class="relative bg-cafe-card border border-green-800/50 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl shadow-green-900/20">
+      <h3 class="text-lg font-bold text-white mb-1">Apex Gaming Cafe — Checkout</h3>
+      <p class="text-sm text-slate-400 mb-5">Session summary</p>
+      <div id="checkout-details" class="space-y-3 text-sm mb-6"></div>
+      <div class="flex justify-between items-center pt-4 border-t border-green-900/40">
+        <span class="text-slate-400">Final Charge</span>
+        <span id="checkout-total" class="mono text-2xl font-bold text-green-400"></span>
+      </div>
+      <div class="flex gap-2 mt-4">
+        <button onclick="printBill()" id="btn-print-bill"
+          class="flex-1 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-green-800/50 text-green-300 text-sm font-medium rounded-lg transition-colors">
+          Print Bill
+        </button>
+        <button onclick="closeCheckoutModal()"
+          class="flex-1 py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg transition-colors">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm"></div>
+
+  <script>
+    // ── State ────────────────────────────────────────────────────────────────
+    let devices = [];
+    const activeSessionMap = {};
+    const activeTimers = {};
+    let settings = { MINIMUM_CHARGE: 50, CURRENCY_SYMBOL: '₹' };
+    let snacksCatalog = [];
+    let lastCheckout = null;
+    const alertedSessions = new Set();
+    const inrFormatter = new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    const TYPE_ICONS = { TV: '📺', Console: '🎮', Simulator: '🏎️', PC: '🖥️' };
+
+    // ── Utilities ────────────────────────────────────────────────────────────
+    function fmtMoney(n) {
+      return inrFormatter.format(Number(n));
+    }
+
+    function fmtDateTime(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function formatCountdown(ms) {
+      const s = Math.max(0, Math.floor(ms / 1000));
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return `${pad(m)}:${pad(sec)}`;
+    }
+
+    function deviceRates(d, playerCount = 1) {
+      const two = d.type === 'TV' && playerCount === 2;
+      return {
+        r30: two ? (d.rate_30min_2p ?? d.rate_30min) : d.rate_30min,
+        r60: two ? (d.rate_60min_2p ?? d.rate_60min) : d.rate_60min,
+      };
+    }
+
+    function sessionAmount(durationLimit, rate30, rate60) {
+      return durationLimit === 60 ? rate60 : rate30;
+    }
+
+    function playerLabel(count) {
+      return count === 2 ? '2 Persons' : '1 Person';
+    }
+
+    function durationLabel(session) {
+      if (session.duration_limit === 60) return '1 Hour';
+      if (session.duration_limit === 30) return '30 Minutes';
+      return '—';
+    }
+
+    async function api(url, opts = {}) {
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...opts,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      return data;
+    }
+
+    // ── Toast ──────────────────────────────────────────────────────────────
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      const colors = type === 'success'
+        ? 'bg-green-500/15 border-green-500/40 text-green-300'
+        : 'bg-red-500/15 border-red-500/40 text-red-300';
+      el.className = `toast-enter px-4 py-3 rounded-lg border text-sm font-medium shadow-lg ${colors}`;
+      el.textContent = message;
+      container.appendChild(el);
+      setTimeout(() => { el.remove(); }, 3000);
+    }
+
+    // ── Clock ────────────────────────────────────────────────────────────────
+    function updateClock() {
+      document.getElementById('live-clock').textContent =
+        new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // ── Tabs ─────────────────────────────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+        document.getElementById(`tab-${btn.dataset.tab}`).classList.remove('hidden');
+        if (btn.dataset.tab === 'history') {
+          const dateInput = document.getElementById('history-filter-date');
+          if (dateInput && !dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+          loadHistory();
+        }
+        if (btn.dataset.tab === 'config') renderInventory();
+        if (btn.dataset.tab === 'snacks') loadSnacksPanel();
+        if (btn.dataset.tab === 'cash') loadCashPanel();
+      });
+    });
+
+    document.getElementById('new-device-type').addEventListener('change', (e) => {
+      const tvFields = document.getElementById('tv-pricing-fields');
+      const std30 = document.getElementById('new-device-rate-30').closest('div');
+      const std60 = document.getElementById('new-device-rate-60').closest('div');
+      if (e.target.value === 'TV') {
+        tvFields.classList.remove('hidden');
+        std30.classList.add('hidden');
+        std60.classList.add('hidden');
+        document.getElementById('new-device-rate-30').removeAttribute('required');
+        document.getElementById('new-device-rate-60').removeAttribute('required');
+      } else {
+        tvFields.classList.add('hidden');
+        std30.classList.remove('hidden');
+        std60.classList.remove('hidden');
+        document.getElementById('new-device-rate-30').setAttribute('required', '');
+        document.getElementById('new-device-rate-60').setAttribute('required', '');
+      }
+    });
+
+    // ── Device Cards ─────────────────────────────────────────────────────────
+    function typeBadge(type) {
+      return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-950 text-green-300 border border-green-800/50">${TYPE_ICONS[type] || ''} ${type}</span>`;
+    }
+
+    function renderDeviceGrid() {
+      const grid = document.getElementById('device-grid');
+      const empty = document.getElementById('empty-dashboard');
+      if (devices.length === 0) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      grid.innerHTML = devices.map(d => {
+        const session = activeSessionMap[d.id];
+        if (d.status === 'occupied' && session) return occupiedCard(d, session);
+        return availableCard(d);
+      }).join('');
+      bindCardEvents();
+    }
+
+    function availableCard(d) {
+      const isTv = d.type === 'TV';
+      const r1 = deviceRates(d, 1);
+      const r2 = deviceRates(d, 2);
+      const pricingHint = isTv
+        ? `<p class="text-xs text-zinc-500 leading-relaxed">
+            <span class="text-zinc-400">1P:</span> ${fmtMoney(r1.r30)}/30m · ${fmtMoney(r1.r60)}/hr<br/>
+            <span class="text-zinc-400">2P:</span> ${fmtMoney(r2.r30)}/30m · ${fmtMoney(r2.r60)}/hr
+          </p>`
+        : `<p class="mono text-sm text-slate-400">${fmtMoney(d.rate_30min)}<span class="text-slate-600">/30m</span> · ${fmtMoney(d.rate_60min)}<span class="text-slate-600">/hr</span></p>`;
+      const playerSelect = isTv ? `
+            <label class="block text-xs text-zinc-500 mb-1">Players</label>
+            <select data-field="players" class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:outline-none focus:border-green-500">
+              <option value="1">1 Person</option>
+              <option value="2">2 Persons</option>
+            </select>` : '';
+      return `
+        <div class="card-enter bg-cafe-card apex-card border border-green-500/30 rounded-xl p-5 flex flex-col gap-3" data-device-id="${d.id}" data-device-type="${d.type}">
+          <div class="flex items-start justify-between">
+            <div>
+              <h3 class="font-semibold text-white">${esc(d.name)}</h3>
+              ${typeBadge(d.type)}
+            </div>
+            <span class="px-2 py-0.5 rounded text-xs font-medium bg-green-500/15 text-green-400 border border-green-500/30">Available</span>
+          </div>
+          ${pricingHint}
+          <div class="space-y-2 mt-1">
+            ${playerSelect}
+            <label class="block text-xs text-zinc-500 mb-1">Duration</label>
+            <select data-field="duration"
+              class="w-full px-3 py-2 rounded-lg border border-slate-700 text-sm text-white focus:outline-none focus:border-green-500">
+              <option value="30">30 Minutes — ${fmtMoney(r1.r30)}</option>
+              <option value="60">1 Hour — ${fmtMoney(r1.r60)}</option>
+            </select>
+          </div>
+          <button data-action="start"
+            class="mt-auto w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg transition-colors">
+            Start Session
+          </button>
+        </div>`;
+    }
+
+    function updateTvDurationOptions(card, device) {
+      const players = parseInt(card.querySelector('[data-field="players"]')?.value || '1', 10);
+      const rates = deviceRates(device, players);
+      const sel = card.querySelector('[data-field="duration"]');
+      if (!sel) return;
+      sel.innerHTML = `
+        <option value="30">30 Minutes — ${fmtMoney(rates.r30)}</option>
+        <option value="60">1 Hour — ${fmtMoney(rates.r60)}</option>`;
+    }
+
+    function renderSnackLines(session) {
+      const lines = session.snack_lines || [];
+      if (!lines.length) return '';
+      return `
+        <div class="mt-2 pt-2 border-t border-green-900/30 text-xs space-y-1">
+          <p class="text-zinc-500 font-medium">Snacks</p>
+          ${lines.map(l => `
+            <div class="flex justify-between text-zinc-400">
+              <span>${esc(l.snack_name)} ×${l.quantity}</span>
+              <span class="mono text-green-400">${fmtMoney(l.line_total)}</span>
+            </div>
+          `).join('')}
+          <p class="flex justify-between font-medium text-zinc-300 pt-1">
+            <span>Snacks subtotal</span>
+            <span class="mono text-green-400">${fmtMoney(session.snacks_total || 0)}</span>
+          </p>
+        </div>`;
+    }
+
+    function occupiedCard(d, session) {
+      const players = session.player_count || 1;
+      const rates = deviceRates(d, players);
+      const canExtend = session.duration_limit === 30;
+      const extendCost = rates.r60 - rates.r30;
+      const gamingCharge = sessionAmount(session.duration_limit, rates.r30, rates.r60);
+      const snacksTotal = session.snacks_total || 0;
+      const snackOptions = snacksCatalog.map(s =>
+        `<option value="${s.id}">${esc(s.name)} — ${fmtMoney(s.price)}</option>`
+      ).join('');
+      return `
+        <div class="card-enter bg-cafe-card apex-card border border-red-500/30 rounded-xl p-5 flex flex-col gap-3" data-device-id="${d.id}" data-session-id="${session.id}" id="card-${d.id}">
+          <div class="flex items-start justify-between">
+            <div>
+              <h3 class="font-semibold text-white">${esc(d.name)}</h3>
+              ${typeBadge(d.type)}
+            </div>
+            <span class="px-2 py-0.5 rounded text-xs font-medium bg-red-500/15 text-red-400 border border-red-500/30">Occupied</span>
+          </div>
+          <div class="space-y-1 text-sm">
+            ${d.type === 'TV' ? `<p><span class="text-slate-500">Players:</span> <span class="text-white">${playerLabel(players)}</span></p>` : ''}
+            <p><span class="text-slate-500">Duration:</span> <span class="text-white">${durationLabel(session)}</span></p>
+            <p><span class="text-slate-500">Gaming:</span> <span class="mono text-green-400">${fmtMoney(gamingCharge)}</span></p>
+            ${snacksTotal > 0 ? `<p><span class="text-slate-500">Snacks:</span> <span class="mono text-green-400">${fmtMoney(snacksTotal)}</span></p>` : ''}
+          </div>
+          <div id="snack-lines-${d.id}">${renderSnackLines(session)}</div>
+          ${snacksCatalog.length ? `
+            <div class="flex gap-2">
+              <select data-field="snack-pick" class="flex-1 px-2 py-1.5 rounded-lg border border-slate-700 text-xs text-white">
+                <option value="">Add snack…</option>${snackOptions}
+              </select>
+              <button data-action="add-snack" class="px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs rounded-lg">+</button>
+            </div>
+          ` : ''}
+          <div id="timer-area-${d.id}" class="mt-1">
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-slate-500">Remaining</span>
+              <span id="timer-${d.id}" class="mono text-lg font-semibold text-green-400">--:--</span>
+            </div>
+            <div class="h-2 bg-zinc-900 rounded-full overflow-hidden border border-green-900/30">
+              <div id="progress-${d.id}" class="progress-bar h-full bg-green-600 rounded-full" style="width:100%"></div>
+            </div>
+          </div>
+          ${canExtend ? `
+            <button data-action="extend"
+              class="w-full py-2 bg-green-600/20 hover:bg-green-600/30 border border-green-500/40 text-green-300 text-sm font-medium rounded-lg transition-colors">
+              Extend to 1 Hour (+${fmtMoney(extendCost)})
+            </button>
+          ` : ''}
+          <button data-action="stop"
+            class="mt-auto w-full py-2.5 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors">
+            Stop / Checkout
+          </button>
+        </div>`;
+    }
+
+    function esc(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    function bindCardEvents() {
+      document.querySelectorAll('[data-action="start"]').forEach(btn => {
+        btn.addEventListener('click', handleStart);
+      });
+      document.querySelectorAll('[data-action="stop"]').forEach(btn => {
+        btn.addEventListener('click', handleStop);
+      });
+      document.querySelectorAll('[data-action="extend"]').forEach(btn => {
+        btn.addEventListener('click', handleExtend);
+      });
+      document.querySelectorAll('[data-action="add-snack"]').forEach(btn => {
+        btn.addEventListener('click', handleAddSnackToSession);
+      });
+      document.querySelectorAll('[data-field="players"]').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const card = e.target.closest('[data-device-id]');
+          const deviceId = parseInt(card.dataset.deviceId, 10);
+          const device = devices.find(d => d.id === deviceId);
+          if (device) updateTvDurationOptions(card, device);
+        });
+      });
+    }
+
+    async function refreshSession(deviceId) {
+      const session = await api(`/api/sessions/active/${deviceId}`);
+      if (session) {
+        activeSessionMap[deviceId] = session;
+        renderDeviceGrid();
+        startTimer(deviceId, session);
+      }
+    }
+
+    async function handleAddSnackToSession(e) {
+      const card = e.target.closest('[data-device-id]');
+      const deviceId = parseInt(card.dataset.deviceId, 10);
+      const session = activeSessionMap[deviceId];
+      const select = card.querySelector('[data-field="snack-pick"]');
+      const snackId = parseInt(select.value, 10);
+      if (!session || !snackId) {
+        showToast('Select a snack', 'error');
+        return;
+      }
+      try {
+        await api(`/api/sessions/${session.id}/snacks`, {
+          method: 'POST',
+          body: JSON.stringify({ snack_id: snackId, quantity: 1 }),
+        });
+        await refreshSession(deviceId);
+        showToast('Snack added');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function handleStart(e) {
+      const card = e.target.closest('[data-device-id]');
+      const deviceId = parseInt(card.dataset.deviceId, 10);
+      const duration_limit = parseInt(card.querySelector('[data-field="duration"]').value, 10);
+      const device = devices.find(d => d.id === deviceId);
+      const body = { device_id: deviceId, duration_limit };
+      if (device?.type === 'TV') {
+        body.player_count = parseInt(card.querySelector('[data-field="players"]').value, 10);
+      }
+
+      try {
+        const session = await api('/api/sessions/start', { method: 'POST', body: JSON.stringify(body) });
+        const idx = devices.findIndex(d => d.id === deviceId);
+        if (idx !== -1) devices[idx].status = 'occupied';
+        activeSessionMap[deviceId] = session;
+        renderDeviceGrid();
+        startTimer(deviceId, session);
+        showToast('Session started');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function handleExtend(e) {
+      const card = e.target.closest('[data-device-id]');
+      const deviceId = parseInt(card.dataset.deviceId, 10);
+      const session = activeSessionMap[deviceId];
+      if (!session) return;
+
+      try {
+        const result = await api(`/api/sessions/extend/${session.id}`, { method: 'PUT' });
+        activeSessionMap[deviceId] = result;
+        alertedSessions.delete(session.id);
+        const idx = devices.findIndex(d => d.id === deviceId);
+        renderDeviceGrid();
+        if (idx !== -1) startTimer(deviceId, result);
+        showToast(`Extended to 1 hour (+${fmtMoney(result.extension_cost)})`);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function handleStop(e) {
+      const card = e.target.closest('[data-device-id]');
+      const deviceId = parseInt(card.dataset.deviceId, 10);
+      const session = activeSessionMap[deviceId];
+      if (!session) return;
+
+      try {
+        const result = await api(`/api/sessions/stop/${session.id}`, { method: 'PUT' });
+        clearTimer(deviceId);
+        delete activeSessionMap[deviceId];
+        alertedSessions.delete(session.id);
+        const idx = devices.findIndex(d => d.id === deviceId);
+        if (idx !== -1) devices[idx].status = 'available';
+        renderDeviceGrid();
+        showCheckoutModal(result);
+        showToast('Session ended — checkout complete');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // ── Timers ───────────────────────────────────────────────────────────────
+    function startTimer(deviceId, session) {
+      clearTimer(deviceId);
+      const device = devices.find(d => d.id === deviceId);
+      if (!device) return;
+
+      activeTimers[deviceId] = setInterval(() => {
+        tickTimer(deviceId, session, device);
+      }, 1000);
+      tickTimer(deviceId, session, device);
+    }
+
+    function tickTimer(deviceId, session, device) {
+      const now = Date.now();
+      const start = new Date(session.start_time).getTime();
+      const elapsed = now - start;
+      const limitMs = (session.duration_limit || 0) * 60000;
+      const remaining = Math.max(0, limitMs - elapsed);
+      const timerEl = document.getElementById(`timer-${deviceId}`);
+      const progressEl = document.getElementById(`progress-${deviceId}`);
+      const cardEl = document.getElementById(`card-${deviceId}`);
+
+      if (timerEl) timerEl.textContent = formatCountdown(remaining);
+      if (progressEl) {
+        const pct = limitMs > 0 ? (remaining / limitMs) * 100 : 0;
+        progressEl.style.width = `${pct}%`;
+      }
+
+      if (remaining <= 0 && !alertedSessions.has(session.id)) {
+        alertedSessions.add(session.id);
+        if (cardEl) cardEl.classList.add('flash-expired');
+        const msg = session.duration_limit === 30
+          ? `Time's up on ${device.name}! Extend to 1 hour or checkout.`
+          : `Time's up on ${device.name}! Please checkout.`;
+        alert(msg);
+      }
+    }
+
+    function clearTimer(deviceId) {
+      if (activeTimers[deviceId]) {
+        clearInterval(activeTimers[deviceId]);
+        delete activeTimers[deviceId];
+      }
+    }
+
+    // ── Checkout Modal ───────────────────────────────────────────────────────
+    function showCheckoutModal(data) {
+      lastCheckout = data;
+      const details = document.getElementById('checkout-details');
+      const snackRows = (data.snack_lines || []).map(l =>
+        `<div class="flex justify-between text-zinc-400"><span>${esc(l.snack_name)} ×${l.quantity}</span><span class="mono">${fmtMoney(l.line_total)}</span></div>`
+      ).join('');
+      details.innerHTML = `
+        <div class="flex justify-between"><span class="text-slate-500">Device</span><span class="text-white">${esc(data.device_name || '')}</span></div>
+        ${data.device_type === 'TV' ? `<div class="flex justify-between"><span class="text-slate-500">Players</span><span class="text-white">${playerLabel(data.player_count || 1)}</span></div>` : ''}
+        <div class="flex justify-between"><span class="text-slate-500">Duration</span><span class="text-white">${durationLabel(data)}</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Gaming</span><span class="mono text-white">${fmtMoney(data.gaming_amount ?? 0)}</span></div>
+        ${snackRows ? `<div class="pt-2 border-t border-green-900/30 space-y-1"><p class="text-zinc-500 text-xs">Snacks</p>${snackRows}
+          <div class="flex justify-between font-medium"><span>Snacks total</span><span class="mono text-green-400">${fmtMoney(data.snacks_total ?? 0)}</span></div></div>` : ''}
+        <div class="flex justify-between"><span class="text-slate-500">Started</span><span class="mono text-zinc-400 text-xs">${fmtDateTime(data.start_time)}</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Ended</span><span class="mono text-zinc-400 text-xs">${fmtDateTime(data.end_time)}</span></div>
+      `;
+      document.getElementById('checkout-total').textContent = fmtMoney(data.total_amount);
+      const modal = document.getElementById('checkout-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function printBill() {
+      if (!lastCheckout) return;
+      const d = lastCheckout;
+      const logoUrl = `${window.location.origin}/logo.png`;
+      const snacks = (d.snack_lines || []).map(l =>
+        `<tr><td>${esc(l.snack_name)}</td><td>${l.quantity}</td><td align="right">${fmtMoney(l.line_total)}</td></tr>`
+      ).join('');
+      const w = window.open('', '_blank', 'width=400,height=640');
+      w.document.write(`<!DOCTYPE html><html><head><title>Apex Bill</title>
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            font-family: sans-serif; margin: 0; padding: 24px 20px;
+            max-width: 340px; position: relative; min-height: 100vh;
+            background: #fff; color: #111;
+          }
+          .bill-watermark {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background: url('${logoUrl}') center 45% / 280px no-repeat;
+            opacity: 0.12;
+          }
+          .bill-content { position: relative; z-index: 1; }
+          .bill-logo { display: block; margin: 0 auto 10px; width: 72px; height: 72px; border-radius: 50%; object-fit: cover; }
+          h2 { text-align: center; color: #166534; margin: 0 0 4px; font-size: 18px; }
+          .meta { text-align: center; font-size: 11px; color: #666; margin-bottom: 16px; }
+          table { width: 100%; font-size: 12px; border-collapse: collapse; margin: 8px 0; }
+          td, th { padding: 4px 0; }
+          .row { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; }
+          .total { font-size: 20px; font-weight: bold; margin-top: 14px; text-align: right; color: #166534; border-top: 2px solid #166534; padding-top: 10px; }
+          .thanks { text-align: center; font-size: 11px; margin-top: 28px; color: #888; }
+        </style></head><body>
+        <div class="bill-watermark"></div>
+        <div class="bill-content">
+          <img src="${logoUrl}" class="bill-logo" alt="Apex Gaming Cafe"/>
+          <h2>Apex Gaming Cafe</h2>
+          <p class="meta">${fmtDateTime(d.end_time)}</p>
+          <div class="row"><span>Device</span><b>${esc(d.device_name)}</b></div>
+          <div class="row"><span>Duration</span><span>${durationLabel(d)}</span></div>
+          ${d.device_type === 'TV' ? `<div class="row"><span>Players</span><span>${playerLabel(d.player_count || 1)}</span></div>` : ''}
+          <div class="row"><span>Gaming</span><span>${fmtMoney(d.gaming_amount ?? 0)}</span></div>
+          ${snacks ? `<table><tr><th align="left">Snack</th><th>Qty</th><th align="right">Amt</th></tr>${snacks}</table>
+          <div class="row"><span>Snacks total</span><span>${fmtMoney(d.snacks_total ?? 0)}</span></div>` : ''}
+          <p class="total">Total: ${fmtMoney(d.total_amount)}</p>
+          <p class="thanks">Thank you — visit again!</p>
+        </div>
+        <script>window.onload=function(){window.print()}<\/script></body></html>`);
+      w.document.close();
+    }
+    window.printBill = printBill;
+
+    function closeCheckoutModal() {
+      const modal = document.getElementById('checkout-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+    window.closeCheckoutModal = closeCheckoutModal;
+
+    // ── Config Tab ───────────────────────────────────────────────────────────
+    function renderInventory() {
+      const tbody = document.getElementById('inventory-body');
+      tbody.innerHTML = devices.map(d => `
+        <tr class="border-b border-green-900/30 hover:bg-green-950/20">
+          <td class="px-6 py-3 mono text-zinc-500">${d.id}</td>
+          <td class="px-6 py-3 text-white">${esc(d.name)}</td>
+          <td class="px-6 py-3">${typeBadge(d.type)}</td>
+          <td class="px-6 py-3 mono">${fmtMoney(d.rate_30min)}</td>
+          <td class="px-6 py-3 mono">${fmtMoney(d.rate_60min)}</td>
+          <td class="px-6 py-3 mono">${d.type === 'TV' ? fmtMoney(d.rate_30min_2p ?? d.rate_30min) : '—'}</td>
+          <td class="px-6 py-3 mono">${d.type === 'TV' ? fmtMoney(d.rate_60min_2p ?? d.rate_60min) : '—'}</td>
+          <td class="px-6 py-3">
+            <span class="px-2 py-0.5 rounded text-xs font-medium ${d.status === 'available' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}">${d.status}</span>
+          </td>
+          <td class="px-6 py-3 space-x-2">
+            <button onclick="editPricing(${d.id})" class="text-xs text-green-400 hover:text-green-300 font-medium">Edit Pricing</button>
+            <button onclick="deleteDevice(${d.id})" class="text-xs text-red-400 hover:text-red-300 font-medium">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function editPricing(id) {
+      const d = devices.find(x => x.id === id);
+      if (!d) return;
+      const val30 = prompt('30 min — 1 person (₹):', d.rate_30min);
+      if (val30 === null) return;
+      const val60 = prompt('1 hour — 1 person (₹):', d.rate_60min);
+      if (val60 === null) return;
+      const body = { rate_30min: parseFloat(val30), rate_60min: parseFloat(val60) };
+      if (d.type === 'TV') {
+        const val30_2 = prompt('30 min — 2 persons (₹):', d.rate_30min_2p ?? d.rate_30min);
+        if (val30_2 === null) return;
+        const val60_2 = prompt('1 hour — 2 persons (₹):', d.rate_60min_2p ?? d.rate_60min);
+        if (val60_2 === null) return;
+        body.rate_30min_2p = parseFloat(val30_2);
+        body.rate_60min_2p = parseFloat(val60_2);
+      }
+      if (Object.values(body).some(v => isNaN(v) || v < 0)) {
+        showToast('Invalid pricing', 'error');
+        return;
+      }
+      try {
+        const updated = await api(`/api/devices/${id}/pricing`, {
+          method: 'PUT',
+          body: JSON.stringify(body),
+        });
+        const idx = devices.findIndex(d => d.id === id);
+        if (idx !== -1) devices[idx] = updated;
+        renderInventory();
+        renderDeviceGrid();
+        showToast('Pricing updated');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    window.editPricing = editPricing;
+
+    async function deleteDevice(id) {
+      if (!confirm('Delete this device?')) return;
+      try {
+        await api(`/api/devices/${id}`, { method: 'DELETE' });
+        devices = devices.filter(d => d.id !== id);
+        clearTimer(id);
+        delete activeSessionMap[id];
+        renderInventory();
+        renderDeviceGrid();
+        showToast('Device deleted');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    window.deleteDevice = deleteDevice;
+
+    document.getElementById('add-device-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('new-device-name').value.trim();
+      const type = document.getElementById('new-device-type').value;
+      const rate_30min = parseFloat(document.getElementById('new-device-rate-30').value);
+      const rate_60min = parseFloat(document.getElementById('new-device-rate-60').value);
+      const body = { name, type };
+      if (type === 'TV') {
+        body.rate_30min = parseFloat(document.getElementById('new-tv-rate-30-1p').value);
+        body.rate_60min = parseFloat(document.getElementById('new-tv-rate-60-1p').value);
+        body.rate_30min_2p = parseFloat(document.getElementById('new-tv-rate-30-2p').value);
+        body.rate_60min_2p = parseFloat(document.getElementById('new-tv-rate-60-2p').value);
+        body.station_label = name;
+      } else {
+        body.rate_30min = rate_30min;
+        body.rate_60min = rate_60min;
+      }
+      try {
+        const device = await api('/api/devices', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        devices.push(device);
+        e.target.reset();
+        renderInventory();
+        renderDeviceGrid();
+        showToast('Device added');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    document.getElementById('settings-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        settings = await api('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({
+            MINIMUM_CHARGE: document.getElementById('setting-min-charge').value,
+            CURRENCY_SYMBOL: document.getElementById('setting-currency').value,
+          }),
+        });
+        showToast('Settings saved');
+        renderDeviceGrid();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // ── History Tab ──────────────────────────────────────────────────────────
+    async function loadHistory() {
+      try {
+        const dateEl = document.getElementById('history-filter-date');
+        const date = dateEl?.value || '';
+        const historyUrl = date ? `/api/history?date=${encodeURIComponent(date)}` : '/api/history';
+        const [stats, history] = await Promise.all([
+          api('/api/stats'),
+          api(historyUrl),
+        ]);
+        document.getElementById('stat-revenue').textContent = fmtMoney(stats.total_revenue);
+        document.getElementById('stat-gaming').textContent = fmtMoney(stats.gaming_revenue || 0);
+        document.getElementById('stat-snacks').textContent = fmtMoney(stats.snacks_revenue || 0);
+        document.getElementById('stat-hours').textContent = `${stats.total_hours}h`;
+        const popIcon = TYPE_ICONS[stats.most_popular_type] || '';
+        document.getElementById('stat-popular').textContent = `${popIcon} ${stats.most_popular_type}`;
+
+        const tbody = document.getElementById('history-body');
+        const empty = document.getElementById('empty-history');
+        if (history.length === 0) {
+          tbody.innerHTML = '';
+          empty.classList.remove('hidden');
+          return;
+        }
+        empty.classList.add('hidden');
+        tbody.innerHTML = history.map(s => `
+          <tr class="border-b border-green-900/30 hover:bg-green-950/20">
+            <td class="px-6 py-3 mono text-zinc-500 text-xs">${fmtDateTime(s.end_time)}</td>
+            <td class="px-6 py-3">${esc(s.device_name)} ${typeBadge(s.device_type)}</td>
+            <td class="px-6 py-3">${durationLabel(s)}${s.player_count === 2 ? ' · 2P' : s.device_type === 'TV' ? ' · 1P' : ''}</td>
+            <td class="px-6 py-3 mono">${s.total_minutes ?? '—'}</td>
+            <td class="px-6 py-3 mono text-zinc-400">${fmtMoney(s.snacks_total || 0)}</td>
+            <td class="px-6 py-3 mono text-green-400">${fmtMoney(s.total_amount)}</td>
+            <td class="px-6 py-3">
+              <button onclick="deleteHistory(${s.id})" class="text-xs text-red-400 hover:text-red-300 font-medium">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function clearHistoryByDate() {
+      const date = document.getElementById('history-filter-date').value;
+      if (!date) {
+        showToast('Pick a date to clear', 'error');
+        return;
+      }
+      if (!confirm(`Delete ALL session history for ${date}?`)) return;
+      try {
+        const result = await api(`/api/history/clear/by-date/${date}`, { method: 'DELETE' });
+        showToast(`Cleared ${result.deleted} session(s) for ${date}`);
+        loadHistory();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    window.clearHistoryByDate = clearHistoryByDate;
+
+    async function clearAllHistory() {
+      if (!confirm('Delete ENTIRE session history? This cannot be undone.')) return;
+      if (!confirm('Are you sure? All completed sessions will be permanently removed.')) return;
+      try {
+        const result = await api('/api/history/clear/all', { method: 'DELETE' });
+        document.getElementById('history-filter-date').value = '';
+        showToast(`Cleared all history (${result.deleted} sessions)`);
+        loadHistory();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    window.clearAllHistory = clearAllHistory;
+
+    async function deleteHistory(id) {
+      if (!confirm('Delete this session from history?')) return;
+      try {
+        await api(`/api/history/${id}`, { method: 'DELETE' });
+        showToast('Session deleted from history');
+        loadHistory();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    window.deleteHistory = deleteHistory;
+
+    async function loadSnacksPanel() {
+      try {
+        snacksCatalog = await api('/api/snacks');
+        const grid = document.getElementById('snacks-menu-grid');
+        grid.innerHTML = snacksCatalog.map(s => `
+          <div class="p-3 rounded-lg border border-green-900/40 bg-black/40 text-center">
+            <p class="text-sm text-white font-medium">${esc(s.name)}</p>
+            <p class="text-xs text-zinc-500">${esc(s.category)}</p>
+            <p class="mono text-green-400 text-sm mt-1">${fmtMoney(s.price)}</p>
+          </div>
+        `).join('') || '<p class="text-zinc-500 col-span-full">No items</p>';
+
+        const active = Object.entries(activeSessionMap);
+        const el = document.getElementById('active-snack-sessions');
+        if (!active.length) {
+          el.innerHTML = '<p>No active sessions — start gaming first</p>';
+          return;
+        }
+        el.innerHTML = active.map(([deviceId, session]) => {
+          const device = devices.find(d => d.id === parseInt(deviceId, 10));
+          const opts = snacksCatalog.map(s =>
+            `<option value="${s.id}">${esc(s.name)} — ${fmtMoney(s.price)}</option>`
+          ).join('');
+          return `
+            <div class="p-3 rounded-lg border border-green-900/40 bg-black/30">
+              <p class="text-white font-medium mb-2">${esc(device?.name || 'Device')}</p>
+              <div class="flex gap-2">
+                <select id="snack-pick-${deviceId}" class="flex-1 px-2 py-1.5 rounded border border-slate-700 text-xs text-white">
+                  <option value="">Select snack</option>${opts}
+                </select>
+                <button onclick="addSnackFromPanel(${deviceId})" class="px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg">Add</button>
+              </div>
+            </div>`;
+        }).join('');
+        renderDeviceGrid();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function addSnackFromPanel(deviceId) {
+      const session = activeSessionMap[deviceId];
+      const sel = document.getElementById(`snack-pick-${deviceId}`);
+      const snackId = parseInt(sel?.value, 10);
+      if (!session || !snackId) return showToast('Select a snack', 'error');
+      try {
+        await api(`/api/sessions/${session.id}/snacks`, {
+          method: 'POST',
+          body: JSON.stringify({ snack_id: snackId, quantity: 1 }),
+        });
+        await refreshSession(deviceId);
+        loadSnacksPanel();
+        showToast('Snack added');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    window.addSnackFromPanel = addSnackFromPanel;
+
+    document.getElementById('add-snack-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await api('/api/snacks', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: document.getElementById('snack-name').value.trim(),
+            price: document.getElementById('snack-price').value,
+            category: document.getElementById('snack-category').value,
+          }),
+        });
+        e.target.reset();
+        loadSnacksPanel();
+        showToast('Menu item added');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    function todayISO() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    async function loadCashPanel() {
+      const dateInput = document.getElementById('cash-date');
+      if (!dateInput.value) dateInput.value = todayISO();
+      const date = dateInput.value;
+      document.getElementById('cash-log-date-label').textContent = date;
+
+      try {
+        const data = await api(`/api/cash?date=${date}`);
+        document.getElementById('cash-today-offline').textContent = fmtMoney(data.totals.offline);
+        document.getElementById('cash-today-online').textContent = fmtMoney(data.totals.online);
+        document.getElementById('cash-today-total').textContent =
+          fmtMoney(data.totals.offline + data.totals.online);
+
+        const tbody = document.getElementById('cash-log-body');
+        const empty = document.getElementById('empty-cash');
+        if (!data.logs.length) {
+          tbody.innerHTML = '';
+          empty.classList.remove('hidden');
+          return;
+        }
+        empty.classList.add('hidden');
+        tbody.innerHTML = data.logs.map(log => `
+          <tr class="border-b border-green-900/30">
+            <td class="px-6 py-3 mono text-xs text-zinc-500">${fmtDateTime(log.created_at)}</td>
+            <td class="px-6 py-3 mono text-green-400">${fmtMoney(log.offline_amount)}</td>
+            <td class="px-6 py-3 mono text-green-400">${fmtMoney(log.online_amount)}</td>
+            <td class="px-6 py-3 text-zinc-400">${esc(log.notes || '—')}</td>
+            <td class="px-6 py-3">
+              <button onclick="deleteCashLog(${log.id})" class="text-xs text-red-400">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function deleteCashLog(id) {
+      if (!confirm('Delete this cash entry?')) return;
+      try {
+        await api(`/api/cash/${id}`, { method: 'DELETE' });
+        loadCashPanel();
+        showToast('Entry deleted');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    window.deleteCashLog = deleteCashLog;
+
+    document.getElementById('cash-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await api('/api/cash', {
+          method: 'POST',
+          body: JSON.stringify({
+            offline_amount: document.getElementById('cash-offline').value || 0,
+            online_amount: document.getElementById('cash-online').value || 0,
+            log_date: document.getElementById('cash-date').value,
+            notes: document.getElementById('cash-notes').value.trim(),
+          }),
+        });
+        e.target.reset();
+        document.getElementById('cash-date').value = todayISO();
+        loadCashPanel();
+        showToast('Cash entry saved');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    document.getElementById('cash-date').addEventListener('change', loadCashPanel);
+
+    document.getElementById('history-filter-date').addEventListener('change', loadHistory);
+
+    // ── Init ───────────────────────────────────────────────────────────────────
+    async function init() {
+      try {
+        [devices, settings, snacksCatalog] = await Promise.all([
+          api('/api/devices'),
+          api('/api/settings'),
+          api('/api/snacks'),
+        ]);
+
+        document.getElementById('setting-min-charge').value = settings.MINIMUM_CHARGE;
+        document.getElementById('setting-currency').value = settings.CURRENCY_SYMBOL;
+
+        const occupied = devices.filter(d => d.status === 'occupied');
+        await Promise.all(occupied.map(async (d) => {
+          const session = await api(`/api/sessions/active/${d.id}`);
+          if (session) {
+            activeSessionMap[d.id] = session;
+          }
+        }));
+
+        renderDeviceGrid();
+        renderInventory();
+
+        for (const d of occupied) {
+          const session = activeSessionMap[d.id];
+          if (session) startTimer(d.id, session);
+        }
+      } catch (err) {
+        showToast('Failed to load: ' + err.message, 'error');
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

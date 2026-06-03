@@ -1,0 +1,6 @@
+node_modules/
+cafe.db
+cafe.db-wal
+cafe.db-shm
+.DS_Store
+.env

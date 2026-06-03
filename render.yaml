@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: apex-gaming-cafe
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_PATH
+        value: /var/data/cafe.db
+    disk:
+      name: apex-data
+      mountPath: /var/data
+      sizeGB: 1
